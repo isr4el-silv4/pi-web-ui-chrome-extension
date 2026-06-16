@@ -1,10 +1,10 @@
-# Privacy Policy — Pi Web UI Chrome Extension
+# Privacy Policy — Pi Coding Agent Web UI Chrome Extension
 
 **Last updated:** June 2026
 
 ## Overview
 
-Pi Web UI is a Chrome extension that connects to a local bridge process running on your machine. It gives [Pi Coding Agent](https://pi.dev) the ability to interact with your browser for development tasks.
+Pi Coding Agent Web UI is a Chrome extension that connects to a local bridge process running on your machine. It gives [Pi Coding Agent](https://pi.dev) the ability to interact with your browser for development tasks.
 
 **All data stays on your machine.** The extension communicates exclusively with a local WebSocket server at `127.0.0.1:43117`. No data is transmitted to external servers by this extension.
 

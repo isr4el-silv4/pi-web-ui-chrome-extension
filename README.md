@@ -1,22 +1,22 @@
-# Pi Web UI — Chrome Extension
+# Pi Coding Agent Web UI — Chrome Extension
 
 Chrome side-panel extension that gives [Pi Coding Agent](https://pi.dev) direct browser control. Works together with the **[pi-web-ui Pi extension](https://github.com/isr4el-silv4/pi-web-ui)** (the local bridge) to connect Pi to your running Chrome browser.
 
 ## Architecture
 
 ```
-┌─────────────────────┐         WebSocket          ┌──────────────────────┐
-│   Chrome Extension  │ ◄──── ws://127.0.0.1 ───► │   Local Bridge       │
-│   (this repo)       │         (port 43117)       │  (pi-web-ui ext)     │
-│                     │                            │                      │
-│  • Side panel UI    │   browser_tool_request      │  • Pi SDK session    │
-│  • Debugger client  │ ◄───────────────────────── │  • Tool executor     │
-│  • Network capture  │   browser_tool_response     │  • Permission gates  │
-│  • Console capture  │                            │  • Session registry  │
-└─────────────────────┘                            └──────────────────────┘
-         ▲                                              │
-         │                                              ▼
-   Chrome tabs ──────────────────────────────── Chrome DevTools Protocol
+┌───────────────────────────┐         WebSocket          ┌──────────────────────┐
+│   Chrome Extension        │ ◄──── ws://127.0.0.1 ───► │   Local Bridge       │
+│   (this repo)             │         (port 43117)       │  (pi-web-ui ext)     │
+│                           │                            │                      │
+│  Pi Coding Agent Web UI   │   browser_tool_request     │  • Pi SDK session    │
+│  • Debugger client        │ ◄───────────────────────── │  • Tool executor     │
+│  • Network capture        │   browser_tool_response    │  • Permission gates  │
+│  • Console capture        │                            │  • Session registry  │
+└───────────────────────────┘                            └──────────────────────┘
+         ▲                                                │
+         │                                                ▼
+   Chrome tabs ─────────────────────────────────── Chrome DevTools Protocol
 ```
 
 1. You launch the bridge from Pi's terminal with `/pi-web-ui start`
