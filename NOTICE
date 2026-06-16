@@ -1,0 +1,14 @@
+Pi Web UI Chrome Extension
+Copyright [2025] [your name]
+
+This product includes the following third-party software:
+
+  - marked v15.0.12
+    Copyright (c) 2011-2025, Christopher Jeffrey
+    License: MIT
+    https://github.com/markedjs/marked
+
+  - DOMPurify 3.2.5
+    Copyright (c) Cure53 and other contributors
+    License: Apache License 2.0 / Mozilla Public License 2.0
+    https://github.com/cure53/DOMPurify
