@@ -1,6 +1,6 @@
 # Pi Web UI — Chrome Extension
 
-Chrome side-panel extension that gives [Pi Coding Agent](https://github.com/earendil-works/pi-coding-agent) direct browser control. Works together with the **[pi-web-ui Pi extension](https://github.com/isr4el-silv4/pi-web-ui)** (the local bridge) to connect Pi to your running Chrome browser.
+Chrome side-panel extension that gives [Pi Coding Agent](https://pi.dev) direct browser control. Works together with the **[pi-web-ui Pi extension](https://github.com/isr4el-silv4/pi-web-ui)** (the local bridge) to connect Pi to your running Chrome browser.
 
 ## Architecture
 
@@ -27,7 +27,7 @@ Chrome side-panel extension that gives [Pi Coding Agent](https://github.com/eare
 
 ## Prerequisites
 
-- **Pi Coding Agent** installed
+- **Pi Coding Agent** ([pi.dev](https://pi.dev)) installed
 - **pi-web-ui** Pi extension installed (`~/.pi/agent/extensions/pi-web-ui`)
 - **This Chrome extension** loaded in Chrome (dev mode or from the Web Store)
 
