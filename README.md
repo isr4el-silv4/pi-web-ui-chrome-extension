@@ -87,7 +87,7 @@ Typical flow: you're working on a frontend issue, ask Pi to inspect the page, an
 
 ### Session Management
 
-- **New session** — click "+ New Session" to start fresh in the current directory
+- **New session** — click "+ New Session" or refresh the extension to start fresh in the current directory
 - **Resume session** — pick a previous session from the dropdown to continue where you left off
 - **Switch between terminal and browser** — start from Pi's terminal, then interact through the side panel. Sessions persist in your project directory so you can pick them up later
 
