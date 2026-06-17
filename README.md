@@ -6,7 +6,7 @@ Chrome side-panel extension that gives [Pi Coding Agent](https://pi.dev) direct 
 
 ```
 ┌───────────────────────────┐         WebSocket          ┌──────────────────────┐
-│   Chrome Extension        │ ◄──── ws://127.0.0.1 ───► │   Local Bridge       │
+│   Chrome Extension        │ ◄──── ws://127.0.0.1 ───►  │   Local Bridge       │
 │   (this repo)             │         (port 43117)       │  (pi-web-ui ext)     │
 │                           │                            │                      │
 │  Pi Coding Agent Web UI   │   browser_tool_request     │  • Pi SDK session    │
