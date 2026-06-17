@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="https://i.imgur.com/kRzvtpk.webp" alt="pi-web-ui screenshot" style="max-width:800px;">
+</div>
+
 # Pi Coding Agent Web UI — Chrome Extension
 
 Chrome side-panel extension that gives [Pi Coding Agent](https://pi.dev) direct browser control. Works together with the **[pi-web-ui Pi extension](https://github.com/isr4el-silv4/pi-web-ui)** (the local bridge) to connect Pi to your running Chrome browser.
