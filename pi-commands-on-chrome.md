@@ -262,16 +262,17 @@ interface CompletionItem {
 | Tests: bridge-client list_resources/get_completions | `test/bridge-client-commands.test.js` | ✅ Done |
 | Tests: UI request timeout handling | `test/ui-requests.test.js` | ✅ Done |
 
-### Bridge — Not Yet Implemented (separate repo)
+### Bridge — Implemented ✅
 
 | Component | File(s) | Status |
 |---|---|---|
-| WebUiContext | `src/bridge/web-ui-context.ts` | ❌ Pending |
-| CommandContextActions | `src/bridge/command-context-actions.ts` | ❌ Pending |
-| Wire into session (bindExtensions) | `src/bridge/sdk-session.ts` | ❌ Pending |
-| HTTP endpoints (GET /api/commands, POST /api/completions) | `src/bridge/server.ts` | ❌ Pending |
-| WebSocket handlers (list_resources, get_completions) | `src/bridge/server.ts` | ❌ Pending |
-| Protocol types | `src/protocol/messages.ts` | ❌ Pending |
+| WebUiContext | `src/bridge/web-ui-context.ts` | ✅ Done |
+| bindExtensions wired into session | `src/bridge/server.ts` | ✅ Done |
+| list_resources handler | `src/bridge/server.ts` | ✅ Done |
+| get_completions handler | `src/bridge/server.ts` | ✅ Done |
+| Protocol types | `src/protocol/messages.ts` | ✅ Done |
+| Tests: web-ui-context | `src/bridge/test/web-ui-context.test.ts` | ✅ Done |
+| Tests: protocol types | `src/protocol/test/messages.test.ts` | ✅ Done |
 
 ## Implementation Order
 
@@ -281,10 +282,9 @@ Extension commands run end-to-end. User types `/persona x` in the side panel, th
 
 | Phase | File(s) | Status |
 |---|---|---|
-| Protocol types | `messages.ts` | ❌ |
-| WebUiContext | `web-ui-context.ts` | ❌ |
-| CommandContextActions | `command-context-actions.ts` | ❌ |
-| Wire into session | `sdk-session.ts` | ❌ |
+| Protocol types | `messages.ts` | ✅ |
+| WebUiContext | `web-ui-context.ts` | ✅ |
+| Wire into session (bindExtensions) | `server.ts` | ✅ |
 | Dialog rendering | `sidepanel.js`, `sidepanel-state.js` | ✅ |
 
 ### Milestone 2 — Autocomplete & Validation
@@ -293,7 +293,7 @@ Extension commands run end-to-end. User types `/persona x` in the side panel, th
 
 | Phase | File(s) | Status |
 |---|---|---|
-| Resource discovery | `server.ts`, `messages.ts` | ❌ |
+| Resource discovery | `server.ts`, `messages.ts` | ✅ |
 | Resource fetching | `bridge-client.js` | ✅ |
 | State + autocomplete engine | `sidepanel-state.js`, `sidepanel.js` | ✅ |
 | Autocomplete UI | `sidepanel.html`, `sidepanel.css` | ✅ |
@@ -304,7 +304,7 @@ Extension commands run end-to-end. User types `/persona x` in the side panel, th
 
 | Phase | File(s) | Status |
 |---|---|---|
-| Timeout handling (bridge) | `web-ui-context.ts` | ❌ |
+| Timeout handling (bridge: 30s default) | `web-ui-context.ts` | ✅ |
 | Timeout handling (Chrome: countdown + auto-response) | `sidepanel.js`, `sidepanel-state.js` | ✅ |
 | Error feedback | `sidepanel.js`, `sidepanel-state.js` | ✅ |
 
@@ -324,6 +324,7 @@ Extension commands run end-to-end. User types `/persona x` in the side panel, th
 | `ctx.newSession()` / `ctx.switchSession()` | ✅ Delegates to bridge |
 | `/` autocomplete (names + args) | ✅ Dropdown with descriptions |
 | Unknown command blocking | ✅ Error notification, submit blocked |
+| Dialog timeout (30s) | ✅ Auto-default response + countdown |
 | `ctx.ui.custom()` | ❌ TUI-only, not supported |
 | `ctx.ui.setWidget()` / `setFooter()` | ❌ TUI-only, no-ops |
 
