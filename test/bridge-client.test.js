@@ -119,14 +119,17 @@ describe('extension bridge client', () => {
     const client = createBridgeClient({ WebSocketCtor: FakeWebSocket, port: 43117, onEvent });
     client.connect();
 
-    // Simulate connection open
+    // Simulate connection open — sends list_resources
     listeners.open();
 
     // Send a prompt command
     client.sendCommand({ type: 'prompt', message: 'Hello Pi' });
 
-    // Verify the command was sent
-    expect(sent).toEqual([JSON.stringify({ type: 'prompt', message: 'Hello Pi' })]);
+    // Verify the commands were sent (list_resources first, then prompt)
+    expect(sent).toEqual([
+      JSON.stringify({ type: 'list_resources' }),
+      JSON.stringify({ type: 'prompt', message: 'Hello Pi' }),
+    ]);
 
     // Simulate server responses: prompt_received + session_state
     listeners.message({ data: JSON.stringify({ type: 'prompt_received', message: 'Hello Pi' }) });
@@ -439,7 +442,7 @@ describe('extension bridge client', () => {
     const client = createBridgeClient({ WebSocketCtor: FakeWebSocket, port: 43117, onEvent });
     client.connect();
 
-    // Trigger open event — should send new_session instead of session_state
+    // Trigger open event — should send list_resources + new_session
     listeners.open();
     
     // Wait for all microtasks to complete (fetch -> json -> send)
@@ -448,8 +451,11 @@ describe('extension bridge client', () => {
     // Should have called fetch to get cwd
     expect(mockFetch).toHaveBeenCalledWith('http://127.0.0.1:43117/status');
 
-    // Should send new_session with the cwd from the old session
-    expect(sent).toEqual([JSON.stringify({ type: 'new_session', cwd: '/home/user/project' })]);
+    // Should send list_resources first, then new_session with the cwd from the old session
+    expect(sent).toEqual([
+      JSON.stringify({ type: 'list_resources' }),
+      JSON.stringify({ type: 'new_session', cwd: '/home/user/project' }),
+    ]);
 
     // Should NOT dispatch session_state from /status (that was the old buggy behavior)
     expect(onEvent).toHaveBeenCalledWith({ type: 'bridge_connected' });
@@ -484,8 +490,8 @@ describe('extension bridge client', () => {
     // Should have called fetch
     expect(mockFetch).toHaveBeenCalledWith('http://127.0.0.1:43117/status');
 
-    // Should NOT send new_session when there's no cwd
-    expect(sent).toEqual([]);
+    // Should send list_resources but NOT new_session when there's no cwd
+    expect(sent).toEqual([JSON.stringify({ type: 'list_resources' })]);
 
     globalThis.fetch = originalFetch;
   });
@@ -515,8 +521,8 @@ describe('extension bridge client', () => {
     // Should have called fetch
     expect(mockFetch).toHaveBeenCalledWith('http://127.0.0.1:43117/status');
 
-    // Should NOT send new_session when fetch fails
-    expect(sent).toEqual([]);
+    // Should send list_resources but NOT new_session when fetch fails
+    expect(sent).toEqual([JSON.stringify({ type: 'list_resources' })]);
 
     // Should still emit bridge_connected
     expect(onEvent).toHaveBeenCalledWith({ type: 'bridge_connected' });

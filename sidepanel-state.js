@@ -15,6 +15,13 @@ export function createInitialState() {
     loadingSessions: false,
     sessionError: null,
     reconnectExhausted: false,
+    // Extension commands / autocomplete
+    commands: [],
+    skills: [],
+    templates: [],
+    autocompleteOpen: false,
+    autocompleteItems: [],
+    autocompleteIndex: -1,
   };
 }
 
@@ -63,7 +70,15 @@ export function reduceSidePanelState(state, event) {
       // Generic error from bridge server
       return { ...state, notifications: [...state.notifications, `Error: ${event.error}`], sending: false };
     case 'extension_ui_request':
-      return { ...state, uiRequests: [...state.uiRequests, { id: event.id, kind: event.kind, message: event.message, options: event.options }] };
+      return { ...state, uiRequests: [...state.uiRequests, { id: event.id, kind: event.kind, message: event.message, options: event.options, createdAt: Date.now() }] };
+    case 'extension_ui_request_timeout': {
+      const existed = state.uiRequests.some((r) => r.id === event.id);
+      return {
+        ...state,
+        uiRequests: state.uiRequests.filter((r) => r.id !== event.id),
+        notifications: existed ? [...state.notifications, '⏱ Dialog timed out'] : state.notifications,
+      };
+    }
     case 'extension_ui_notify':
       return { ...state, notifications: [...state.notifications, event.message] };
     case 'extension_ui_response_sent':
@@ -129,6 +144,33 @@ export function reduceSidePanelState(state, event) {
     case 'abort_received':
       // Server confirmed abort — no additional UI change needed
       return state;
+    case 'resources_list':
+      return {
+        ...state,
+        commands: event.commands || [],
+        skills: event.skills || [],
+        templates: event.templates || [],
+      };
+    case 'command_completions':
+      return {
+        ...state,
+        autocompleteItems: event.items || [],
+        autocompleteOpen: (event.items || []).length > 0,
+        autocompleteIndex: (event.items || []).length > 0 ? 0 : -1,
+      };
+    case 'autocomplete_open': {
+      const items = event.items ?? state.autocompleteItems;
+      const hasItems = items.length > 0;
+      return { ...state, autocompleteOpen: true, autocompleteIndex: hasItems ? 0 : -1, autocompleteItems: items };
+    }
+    case 'autocomplete_close':
+      return { ...state, autocompleteOpen: false, autocompleteItems: [], autocompleteIndex: -1 };
+    case 'autocomplete_select':
+      return { ...state, autocompleteIndex: event.index };
+    case 'autocomplete_accept':
+      return { ...state, autocompleteOpen: false, autocompleteItems: [], autocompleteIndex: -1 };
+    case 'extension_command_error':
+      return { ...state, notifications: [...state.notifications, `⚠ Unknown command: /${event.command}`], sending: false };
     default:
       return state;
   }

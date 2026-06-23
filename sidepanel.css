@@ -838,6 +838,14 @@ main::-webkit-scrollbar-thumb:hover {
   opacity: 0.8;
 }
 
+.header-ui-request .ui-request-message {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Notifications ──────────────────────────────────────── */
 #notifications {
   font-size: 12px;
@@ -861,6 +869,7 @@ main::-webkit-scrollbar-thumb:hover {
   background: var(--surface);
   flex-shrink: 0;
   transition: background var(--transition), border-color var(--transition);
+  position: relative;
 }
 
 .prompt-input-wrapper {
@@ -958,4 +967,88 @@ main::-webkit-scrollbar-thumb:hover {
 
 #abort-button:hover {
   opacity: 0.85;
+}
+
+/* ── Autocomplete dropdown ──────────────────────────────── */
+.autocomplete-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow);
+  z-index: 100;
+  margin-bottom: 2px;
+}
+
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink);
+  transition: background var(--transition);
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.autocomplete-item-label {
+  font-family: "SF Mono", "Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, monospace;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.autocomplete-item-desc {
+  color: var(--ink-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.autocomplete-item-type {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-tertiary);
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 10px;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-tertiary);
 }

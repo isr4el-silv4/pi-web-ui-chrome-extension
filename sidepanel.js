@@ -32,10 +32,249 @@ const els = {
   sessionError: document.querySelector('#session-error'),
   headerCwdRow: document.querySelector('#header-cwd-row'),
   themeToggle: document.querySelector('#theme-toggle'),
+  autocompleteDropdown: document.querySelector('#autocomplete-dropdown'),
 };
 
 let selectedCwd = null;
 let lastFetchedCwd = null;
+let autocompleteDebounceTimer = null;
+
+// ── UI Request Timeout Timers ──────────────────────────────
+const UI_REQUEST_TIMEOUT_MS = 30_000; // 30 seconds
+const uiRequestTimers = new Map(); // id -> { timeout, interval }
+
+function startUiRequestTimer(requestId, createdAt) {
+  // Clear any existing timer for this request
+  clearUiRequestTimer(requestId);
+
+  const elapsed = Date.now() - createdAt;
+  const remaining = Math.max(0, UI_REQUEST_TIMEOUT_MS - elapsed);
+
+  const timeout = setTimeout(() => {
+    clearUiRequestTimer(requestId);
+    // Send default response based on kind
+    const request = state.uiRequests.find((r) => r.id === requestId);
+    if (request) {
+      const defaultValue = request.kind === 'confirm' ? false : '';
+      try {
+        client.sendCommand({ type: 'extension_ui_response', id: requestId, value: defaultValue });
+      } catch {
+        // Bridge not connected
+      }
+      dispatch({ type: 'extension_ui_request_timeout', id: requestId });
+    }
+  }, remaining);
+
+  const interval = setInterval(() => {
+    render(); // Re-render to update countdown display
+  }, 1000);
+
+  uiRequestTimers.set(requestId, { timeout, interval });
+}
+
+function clearUiRequestTimer(requestId) {
+  const timer = uiRequestTimers.get(requestId);
+  if (timer) {
+    clearTimeout(timer.timeout);
+    clearInterval(timer.interval);
+    uiRequestTimers.delete(requestId);
+  }
+}
+
+function getRemainingSeconds(createdAt) {
+  const elapsed = Date.now() - createdAt;
+  return Math.max(0, Math.ceil((UI_REQUEST_TIMEOUT_MS - elapsed) / 1000));
+}
+
+// ── Autocomplete Engine ───────────────────────────────────
+
+function buildAutocompleteItems(prefix) {
+  const items = [];
+  const lower = prefix.toLowerCase();
+
+  // Commands
+  for (const cmd of state.commands) {
+    if (cmd.name.toLowerCase().startsWith(lower)) {
+      items.push({
+        value: `/${cmd.name} `,
+        label: `/${cmd.name}`,
+        description: cmd.description || '',
+        type: 'command',
+      });
+    }
+  }
+
+  // Skills
+  for (const skill of state.skills) {
+    const label = `/skill:${skill.name}`;
+    if (label.toLowerCase().startsWith(lower)) {
+      items.push({
+        value: `${label} `,
+        label,
+        description: skill.description || '',
+        type: 'skill',
+      });
+    }
+  }
+
+  // Templates
+  for (const tmpl of state.templates) {
+    if (tmpl.name.toLowerCase().startsWith(lower)) {
+      items.push({
+        value: `/${tmpl.name} `,
+        label: `/${tmpl.name}`,
+        description: tmpl.description || '',
+        type: 'template',
+      });
+    }
+  }
+
+  return items;
+}
+
+function findCommandByName(name) {
+  // Check commands
+  for (const cmd of state.commands) {
+    if (cmd.name === name) return cmd;
+  }
+  // Check skills (skill:name format)
+  if (name.startsWith('skill:')) {
+    const skillName = name.substring(6);
+    for (const skill of state.skills) {
+      if (skill.name === skillName) return skill;
+    }
+  }
+  // Check templates
+  for (const tmpl of state.templates) {
+    if (tmpl.name === name) return tmpl;
+  }
+  return null;
+}
+
+function renderAutocompleteDropdown() {
+  if (!state.autocompleteOpen || state.autocompleteItems.length === 0) {
+    els.autocompleteDropdown.hidden = true;
+    return;
+  }
+
+  els.autocompleteDropdown.hidden = false;
+  els.autocompleteDropdown.innerHTML = '';
+
+  for (let i = 0; i < state.autocompleteItems.length; i++) {
+    const item = state.autocompleteItems[i];
+    const el = document.createElement('div');
+    el.className = 'autocomplete-item' + (i === state.autocompleteIndex ? ' selected' : '');
+
+    const label = document.createElement('span');
+    label.className = 'autocomplete-item-label';
+    label.textContent = item.label;
+    el.appendChild(label);
+
+    if (item.description) {
+      const desc = document.createElement('span');
+      desc.className = 'autocomplete-item-desc';
+      desc.textContent = item.description;
+      el.appendChild(desc);
+    }
+
+    const type = document.createElement('span');
+    type.className = 'autocomplete-item-type';
+    type.textContent = item.type || 'cmd';
+    el.appendChild(type);
+
+    el.addEventListener('click', () => {
+      acceptAutocompleteItem(item);
+    });
+
+    els.autocompleteDropdown.appendChild(el);
+  }
+}
+
+function acceptAutocompleteItem(item) {
+  if (!item) return;
+  const textarea = els.prompt;
+  const start = textarea.selectionStart;
+  const text = textarea.value;
+  // Find the start of the current word (from beginning or last space)
+  let wordStart = 0;
+  for (let i = start - 1; i >= 0; i--) {
+    if (text[i] === ' ' || text[i] === '\n') {
+      wordStart = i + 1;
+      break;
+    }
+  }
+  // Replace the current word with the completion
+  textarea.value = text.substring(0, wordStart) + item.value + text.substring(start);
+  // Position cursor after the inserted text
+  const newPos = wordStart + item.value.length;
+  textarea.setSelectionRange(newPos, newPos);
+  textarea.focus();
+  dispatch({ type: 'autocomplete_accept' });
+  autoResizePrompt();
+}
+
+function navigateAutocomplete(direction) {
+  const items = state.autocompleteItems;
+  if (items.length === 0) return;
+  let newIndex = state.autocompleteIndex + direction;
+  if (newIndex < 0) newIndex = items.length - 1;
+  if (newIndex >= items.length) newIndex = 0;
+  dispatch({ type: 'autocomplete_select', index: newIndex });
+}
+
+function triggerAutocomplete() {
+  const text = els.prompt.value;
+  if (!text.startsWith('/')) {
+    if (state.autocompleteOpen) {
+      dispatch({ type: 'autocomplete_close' });
+    }
+    return;
+  }
+
+  // Find the current word
+  const cursorPos = els.prompt.selectionStart;
+  let wordStart = 0;
+  for (let i = cursorPos - 1; i >= 0; i--) {
+    if (text[i] === ' ' || text[i] === '\n') {
+      wordStart = i + 1;
+      break;
+    }
+  }
+  const currentWord = text.substring(wordStart, cursorPos);
+
+  // If there's a space in the current word, we're doing argument completion
+  const spaceIdx = currentWord.indexOf(' ');
+  if (spaceIdx >= 0) {
+    // Argument completion — request from bridge
+    const cmdName = currentWord.substring(1, spaceIdx);
+    const args = currentWord.substring(spaceIdx + 1);
+    try {
+      client.sendCommand({ type: 'get_completions', command: cmdName, args });
+    } catch {
+      // Bridge not connected
+    }
+    return;
+  }
+
+  // Command name completion — local
+  const items = buildAutocompleteItems(currentWord);
+  if (items.length > 0) {
+    dispatch({ type: 'autocomplete_open', items });
+  } else {
+    dispatch({ type: 'autocomplete_close' });
+  }
+}
+
+function onPromptInput() {
+  autoResizePrompt();
+  if (autocompleteDebounceTimer) {
+    clearTimeout(autocompleteDebounceTimer);
+  }
+  autocompleteDebounceTimer = setTimeout(() => {
+    triggerAutocomplete();
+    autocompleteDebounceTimer = null;
+  }, 150);
+}
 
 function fetchSessionsForCwd(cwd) {
   if (!cwd) return;
@@ -101,17 +340,153 @@ function render() {
   }
   
   els.uiRequests.innerHTML = '';
+
+  // Clean up timers for requests no longer in state
+  for (const [id] of uiRequestTimers) {
+    if (!state.uiRequests.some((r) => r.id === id)) {
+      clearUiRequestTimer(id);
+    }
+  }
+
   for (const request of state.uiRequests) {
     const item = document.createElement('div');
     item.className = 'header-ui-request';
-    item.textContent = request.message ?? request.kind;
-    const ok = document.createElement('button');
-    ok.textContent = 'OK';
-    ok.addEventListener('click', () => {
-      client.sendCommand({ type: 'extension_ui_response', id: request.id, value: request.kind === 'confirm' ? true : '' });
-      dispatch({ type: 'extension_ui_response_sent', id: request.id });
-    });
-    item.append(ok);
+    item.id = `ui-request-${request.id}`;
+
+    const msg = document.createElement('span');
+    msg.className = 'ui-request-message';
+    msg.textContent = request.message ?? request.kind;
+    item.appendChild(msg);
+
+    // Countdown timer display
+    const countdown = document.createElement('span');
+    countdown.className = 'ui-request-countdown';
+    countdown.textContent = `⏱ ${getRemainingSeconds(request.createdAt)}s`;
+    countdown.style.fontSize = '11px';
+    countdown.style.color = 'var(--ink-tertiary)';
+    countdown.style.flexShrink = '0';
+    item.appendChild(countdown);
+
+    // Start timer if not already running
+    if (!uiRequestTimers.has(request.id)) {
+      startUiRequestTimer(request.id, request.createdAt);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'ui-request-actions';
+    actions.style.display = 'flex';
+    actions.style.gap = '6px';
+    actions.style.alignItems = 'center';
+
+    if (request.kind === 'confirm') {
+      const okBtn = document.createElement('button');
+      okBtn.textContent = 'OK';
+      okBtn.style.background = 'var(--success)';
+      okBtn.style.color = '#fff';
+      okBtn.style.border = 'none';
+      okBtn.style.borderRadius = 'var(--radius-sm)';
+      okBtn.style.padding = '4px 14px';
+      okBtn.style.fontSize = '12px';
+      okBtn.style.fontWeight = '600';
+      okBtn.style.cursor = 'pointer';
+      okBtn.addEventListener('click', () => {
+        client.sendCommand({ type: 'extension_ui_response', id: request.id, value: true });
+        dispatch({ type: 'extension_ui_response_sent', id: request.id });
+      });
+      actions.appendChild(okBtn);
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.background = 'var(--surface-2)';
+      cancelBtn.style.color = 'var(--ink)';
+      cancelBtn.style.border = '1px solid var(--border)';
+      cancelBtn.style.borderRadius = 'var(--radius-sm)';
+      cancelBtn.style.padding = '4px 14px';
+      cancelBtn.style.fontSize = '12px';
+      cancelBtn.style.fontWeight = '600';
+      cancelBtn.style.cursor = 'pointer';
+      cancelBtn.addEventListener('click', () => {
+        client.sendCommand({ type: 'extension_ui_response', id: request.id, value: false });
+        dispatch({ type: 'extension_ui_response_sent', id: request.id });
+      });
+      actions.appendChild(cancelBtn);
+    } else if (request.kind === 'select' && request.options) {
+      const select = document.createElement('select');
+      select.style.fontSize = '12px';
+      select.style.padding = '3px 8px';
+      select.style.border = '1px solid var(--border)';
+      select.style.borderRadius = 'var(--radius-sm)';
+      select.style.background = 'var(--surface)';
+      select.style.color = 'var(--ink)';
+      for (const opt of request.options) {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt;
+        select.appendChild(option);
+      }
+      actions.appendChild(select);
+
+      const submitBtn = document.createElement('button');
+      submitBtn.textContent = 'Submit';
+      submitBtn.style.background = 'var(--accent)';
+      submitBtn.style.color = '#fff';
+      submitBtn.style.border = 'none';
+      submitBtn.style.borderRadius = 'var(--radius-sm)';
+      submitBtn.style.padding = '4px 14px';
+      submitBtn.style.fontSize = '12px';
+      submitBtn.style.fontWeight = '600';
+      submitBtn.style.cursor = 'pointer';
+      submitBtn.addEventListener('click', () => {
+        client.sendCommand({ type: 'extension_ui_response', id: request.id, value: select.value });
+        dispatch({ type: 'extension_ui_response_sent', id: request.id });
+      });
+      actions.appendChild(submitBtn);
+    } else if (request.kind === 'input') {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = request.message || 'Enter value...';
+      input.style.fontSize = '12px';
+      input.style.padding = '3px 8px';
+      input.style.border = '1px solid var(--border)';
+      input.style.borderRadius = 'var(--radius-sm)';
+      input.style.background = 'var(--surface)';
+      input.style.color = 'var(--ink)';
+      input.style.minWidth = '120px';
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          client.sendCommand({ type: 'extension_ui_response', id: request.id, value: input.value });
+          dispatch({ type: 'extension_ui_response_sent', id: request.id });
+        }
+      });
+      actions.appendChild(input);
+
+      const submitBtn = document.createElement('button');
+      submitBtn.textContent = 'Submit';
+      submitBtn.style.background = 'var(--accent)';
+      submitBtn.style.color = '#fff';
+      submitBtn.style.border = 'none';
+      submitBtn.style.borderRadius = 'var(--radius-sm)';
+      submitBtn.style.padding = '4px 14px';
+      submitBtn.style.fontSize = '12px';
+      submitBtn.style.fontWeight = '600';
+      submitBtn.style.cursor = 'pointer';
+      submitBtn.addEventListener('click', () => {
+        client.sendCommand({ type: 'extension_ui_response', id: request.id, value: input.value });
+        dispatch({ type: 'extension_ui_response_sent', id: request.id });
+      });
+      actions.appendChild(submitBtn);
+    } else {
+      // Default: simple OK button
+      const ok = document.createElement('button');
+      ok.textContent = 'OK';
+      ok.addEventListener('click', () => {
+        client.sendCommand({ type: 'extension_ui_response', id: request.id, value: request.kind === 'confirm' ? true : '' });
+        dispatch({ type: 'extension_ui_response_sent', id: request.id });
+      });
+      actions.appendChild(ok);
+    }
+
+    item.appendChild(actions);
     els.uiRequests.append(item);
   }
   els.notifications.textContent = state.notifications.join('\n');
@@ -214,6 +589,9 @@ function render() {
 
   // Render error pill
   renderErrorPill();
+
+  // Render autocomplete dropdown
+  renderAutocompleteDropdown();
 
   // Update cwd display from session state (synced from bridge) or local input
   const sessionCwd = state.session?.cwd;
@@ -375,6 +753,26 @@ els.form.addEventListener('submit', (event) => {
     dispatch({ type: 'bridge_error', error: 'Bridge is offline — cannot send message' });
     return;
   }
+
+  // Close autocomplete if open
+  if (state.autocompleteOpen) {
+    dispatch({ type: 'autocomplete_close' });
+  }
+
+  // Validate command if message starts with /
+  if (message.startsWith('/')) {
+    const parts = message.split(/\s+/);
+    const cmdName = parts[0].substring(1); // Remove leading /
+    const resolved = findCommandByName(cmdName);
+    if (!resolved) {
+      // Unknown command — block submit, show error
+      dispatch({ type: 'extension_command_error', command: cmdName });
+      els.prompt.value = '';
+      autoResizePrompt();
+      return;
+    }
+  }
+
   dispatch({ type: 'user_message', text: message });
   try {
     client.sendCommand({ type: 'prompt', message });
@@ -391,9 +789,47 @@ function autoResizePrompt() {
   els.prompt.style.height = Math.min(els.prompt.scrollHeight, 180) + 'px';
 }
 
-els.prompt.addEventListener('input', autoResizePrompt);
+els.prompt.addEventListener('input', onPromptInput);
 
 els.prompt.addEventListener('keydown', (event) => {
+  // Handle autocomplete keyboard navigation
+  if (state.autocompleteOpen) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      navigateAutocomplete(1);
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      navigateAutocomplete(-1);
+      return;
+    }
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      const item = state.autocompleteItems[state.autocompleteIndex];
+      if (item) {
+        acceptAutocompleteItem(item);
+      }
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const item = state.autocompleteItems[state.autocompleteIndex];
+      if (item) {
+        acceptAutocompleteItem(item);
+      } else {
+        // No item selected, submit form
+        els.form.dispatchEvent(new Event('submit', { cancelable: true }));
+      }
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      dispatch({ type: 'autocomplete_close' });
+      return;
+    }
+  }
+
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
     els.form.dispatchEvent(new Event('submit', { cancelable: true }));

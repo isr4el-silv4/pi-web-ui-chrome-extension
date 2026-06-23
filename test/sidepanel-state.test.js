@@ -19,6 +19,12 @@ describe('side panel state', () => {
       loadingSessions: false,
       sessionError: null,
       reconnectExhausted: false,
+      commands: [],
+      skills: [],
+      templates: [],
+      autocompleteOpen: false,
+      autocompleteItems: [],
+      autocompleteIndex: -1,
     });
   });
 

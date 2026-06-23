@@ -24,6 +24,8 @@ export function createBridgeClient({ WebSocketCtor = WebSocket, port = 43117, on
           }
         })
         .catch((err) => console.error('[BridgeClient] Failed to fetch /status:', err));
+      // Request extension resources (commands, skills, templates) on connect
+      socket.send(JSON.stringify({ type: 'list_resources' }));
     });
     socket.addEventListener('close', (e) => {
       console.log('[BridgeClient] Disconnected:', e.code, e.reason);
