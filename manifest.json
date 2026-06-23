@@ -1,5 +1,5 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 4,
   "name": "Pi Coding Agent Web UI",
   "version": "1.0.0",
   "description": "Chrome side-panel UI for Pi backed by a local bridge.",
@@ -9,7 +9,7 @@
     "48": "pi-icon-48.png",
     "128": "pi-icon-128.png"
   },
-  "permissions": ["debugger", "tabs", "activeTab", "scripting", "cookies", "storage", "sidePanel"],
+  "permissions": ["debugger", "tabs", "activeTab", "scripting", "cookies", "sidePanel"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": { "default_title": "Pi Web UI" },
