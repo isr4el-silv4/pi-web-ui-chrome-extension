@@ -25,6 +25,7 @@ describe('side panel state', () => {
       autocompleteOpen: false,
       autocompleteItems: [],
       autocompleteIndex: -1,
+      pendingCompletionCommand: null,
     });
   });
 

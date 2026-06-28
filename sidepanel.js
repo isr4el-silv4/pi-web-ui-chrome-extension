@@ -211,10 +211,21 @@ function acceptAutocompleteItem(item) {
       break;
     }
   }
-  // Replace the current word with the completion
-  textarea.value = text.substring(0, wordStart) + item.value + text.substring(start);
+
+  // Argument completions don't start with / — append after the current word
+  // Command completions start with / — replace the current word
+  if (item.value.startsWith('/')) {
+    // Command completion: replace the current word
+    textarea.value = text.substring(0, wordStart) + item.value + text.substring(start);
+  } else {
+    // Argument completion: append after the current word with a space
+    const currentWord = text.substring(wordStart, start);
+    const separator = currentWord.endsWith(' ') ? '' : ' ';
+    textarea.value = text.substring(0, start) + separator + item.value + text.substring(start);
+  }
+
   // Position cursor after the inserted text
-  const newPos = wordStart + item.value.length;
+  const newPos = textarea.value.indexOf(item.value, start) + item.value.length;
   textarea.setSelectionRange(newPos, newPos);
   textarea.focus();
   dispatch({ type: 'autocomplete_accept' });
@@ -266,6 +277,27 @@ function triggerAutocomplete() {
 
   // Command name completion — local
   const items = buildAutocompleteItems(currentWord);
+
+  // If the current word exactly matches a known command, also request argument completions
+  // Strip leading / for the command name lookup
+  const cmdNameBare = currentWord.startsWith('/') ? currentWord.substring(1) : currentWord;
+  const exactMatch = findCommandByName(cmdNameBare);
+  if (exactMatch && items.length <= 1) {
+    // Request argument completions from the bridge
+    try {
+      dispatch({ type: 'autocomplete_request_completions', command: cmdNameBare });
+      client.sendCommand({ type: 'get_completions', command: cmdNameBare, args: '' });
+    } catch {
+      // Bridge not connected — fall through to local completion
+      if (items.length > 0) {
+        dispatch({ type: 'autocomplete_open', items });
+      } else {
+        dispatch({ type: 'autocomplete_close' });
+      }
+    }
+    return;
+  }
+
   if (items.length > 0) {
     dispatch({ type: 'autocomplete_open', items });
   } else {

@@ -22,6 +22,7 @@ export function createInitialState() {
     autocompleteOpen: false,
     autocompleteItems: [],
     autocompleteIndex: -1,
+    pendingCompletionCommand: null,
   };
 }
 
@@ -57,8 +58,8 @@ export function reduceSidePanelState(state, event) {
       return { ...state, messages: msgs };
     }
     case 'prompt_sent':
-      // Confirmed prompt reached the model
-      return { ...state, sendError: null };
+      // Confirmed prompt reached the model (or was handled as a command)
+      return { ...state, sending: false, sendError: null };
     case 'prompt_error':
       return { ...state, sending: false, sendError: event.error };
     case 'prompt_received':
@@ -151,20 +152,30 @@ export function reduceSidePanelState(state, event) {
         skills: event.skills || [],
         templates: event.templates || [],
       };
-    case 'command_completions':
+    case 'autocomplete_request_completions':
+      return { ...state, pendingCompletionCommand: event.command };
+    case 'command_completions': {
+      const items = event.items || [];
+      // If bridge returns no completions but we requested for a known command,
+      // fall back to showing the command itself so the user can tab-complete it
+      const fallbackItems = items.length === 0 && state.pendingCompletionCommand
+        ? [{ value: `/${state.pendingCompletionCommand} `, label: `/${state.pendingCompletionCommand}`, description: '', type: 'command' }]
+        : items;
       return {
         ...state,
-        autocompleteItems: event.items || [],
-        autocompleteOpen: (event.items || []).length > 0,
-        autocompleteIndex: (event.items || []).length > 0 ? 0 : -1,
+        autocompleteItems: fallbackItems,
+        autocompleteOpen: fallbackItems.length > 0,
+        autocompleteIndex: fallbackItems.length > 0 ? 0 : -1,
+        pendingCompletionCommand: items.length > 0 ? null : state.pendingCompletionCommand,
       };
+    }
     case 'autocomplete_open': {
       const items = event.items ?? state.autocompleteItems;
       const hasItems = items.length > 0;
-      return { ...state, autocompleteOpen: true, autocompleteIndex: hasItems ? 0 : -1, autocompleteItems: items };
+      return { ...state, autocompleteOpen: true, autocompleteIndex: hasItems ? 0 : -1, autocompleteItems: items, pendingCompletionCommand: null };
     }
     case 'autocomplete_close':
-      return { ...state, autocompleteOpen: false, autocompleteItems: [], autocompleteIndex: -1 };
+      return { ...state, autocompleteOpen: false, autocompleteItems: [], autocompleteIndex: -1, pendingCompletionCommand: null };
     case 'autocomplete_select':
       return { ...state, autocompleteIndex: event.index };
     case 'autocomplete_accept':

@@ -301,3 +301,75 @@ describe('buildAutocompleteItems matching logic', () => {
     expect(items[0].type).toBe('template');
   });
 });
+
+describe('argument completion fallback', () => {
+  it('tracks pending command when requesting completions', () => {
+    const state = reduceSidePanelState(createInitialState(), {
+      type: 'autocomplete_request_completions',
+      command: 'persona',
+    });
+    expect(state.pendingCompletionCommand).toBe('persona');
+  });
+
+  it('falls back to command itself when bridge returns empty completions', () => {
+    let state = reduceSidePanelState(createInitialState(), {
+      type: 'autocomplete_request_completions',
+      command: 'persona',
+    });
+    expect(state.pendingCompletionCommand).toBe('persona');
+
+    // Bridge returns empty completions
+    state = reduceSidePanelState(state, {
+      type: 'command_completions',
+      items: [],
+    });
+
+    // Should show the command itself as a fallback
+    expect(state.autocompleteOpen).toBe(true);
+    expect(state.autocompleteItems).toHaveLength(1);
+    expect(state.autocompleteItems[0].label).toBe('/persona');
+    expect(state.autocompleteItems[0].value).toBe('/persona ');
+  });
+
+  it('shows bridge completions when non-empty', () => {
+    let state = reduceSidePanelState(createInitialState(), {
+      type: 'autocomplete_request_completions',
+      command: 'persona',
+    });
+
+    // Bridge returns argument completions
+    state = reduceSidePanelState(state, {
+      type: 'command_completions',
+      items: [
+        { value: 'builder', label: 'builder', description: 'Builder persona' },
+        { value: 'researcher', label: 'researcher', description: 'Researcher persona' },
+      ],
+    });
+
+    expect(state.autocompleteOpen).toBe(true);
+    expect(state.autocompleteItems).toHaveLength(2);
+    expect(state.autocompleteItems[0].label).toBe('builder');
+    expect(state.pendingCompletionCommand).toBeNull();
+  });
+
+  it('clears pending command on autocomplete_close', () => {
+    let state = reduceSidePanelState(createInitialState(), {
+      type: 'autocomplete_request_completions',
+      command: 'persona',
+    });
+    state = reduceSidePanelState(state, { type: 'autocomplete_close' });
+    expect(state.pendingCompletionCommand).toBeNull();
+  });
+
+  it('clears pending command on autocomplete_open with items', () => {
+    let state = reduceSidePanelState(createInitialState(), {
+      type: 'autocomplete_request_completions',
+      command: 'persona',
+    });
+    state = reduceSidePanelState(state, {
+      type: 'autocomplete_open',
+      items: [{ value: '/model ', label: '/model' }],
+    });
+    expect(state.pendingCompletionCommand).toBeNull();
+  });
+});
