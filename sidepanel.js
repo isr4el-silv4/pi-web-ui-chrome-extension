@@ -537,12 +537,25 @@ function render() {
 
     switch (message.role) {
       case 'user':
-        item.innerHTML = renderMarkdown(message.text);
-        if (message.image) {
-          const img = document.createElement('img');
-          img.className = 'user-image';
-          img.src = `data:${message.image.mimeType};base64,${message.image.data}`;
-          item.appendChild(img);
+        if (message.isCommand) {
+          // Render command messages with a terminal-like pill
+          item.classList.add('command');
+          const cmdIcon = document.createElement('span');
+          cmdIcon.className = 'command-icon';
+          cmdIcon.textContent = '⌘';
+          item.appendChild(cmdIcon);
+          const cmdText = document.createElement('span');
+          cmdText.className = 'command-text';
+          cmdText.textContent = message.text;
+          item.appendChild(cmdText);
+        } else {
+          item.innerHTML = renderMarkdown(message.text);
+          if (message.image) {
+            const img = document.createElement('img');
+            img.className = 'user-image';
+            img.src = `data:${message.image.mimeType};base64,${message.image.data}`;
+            item.appendChild(img);
+          }
         }
         break;
 

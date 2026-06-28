@@ -64,8 +64,8 @@ describe('side panel state', () => {
     const withAssistant = reduceSidePanelState(withUser, { type: 'assistant_message', text: 'Hello' });
 
     expect(withAssistant.messages).toEqual([
-      { role: 'user', text: 'Hi' },
-      { role: 'assistant', text: 'Hello' },
+      { role: 'user', text: 'Hi', isCommand: false },
+      { role: 'assistant', text: 'Hello', thinking: undefined },
     ]);
   });
 
@@ -94,7 +94,7 @@ describe('side panel state', () => {
     const withAck = reduceSidePanelState(withUser, { type: 'prompt_received', message: 'Hi' });
 
     // prompt_received should not add another message
-    expect(withAck.messages).toEqual([{ role: 'user', text: 'Hi' }]);
+    expect(withAck.messages).toEqual([{ role: 'user', text: 'Hi', isCommand: false }]);
   });
 
   it('relays assistant_message from bridge as assistant role', () => {
@@ -249,7 +249,7 @@ describe('side panel state', () => {
     expect(withError.sessionError).toBe('Failed to load session');
     const history = reduceSidePanelState(withError, {
       type: 'session_history',
-      messages: [{ role: 'user', text: 'Hello' }],
+      messages: [{ role: 'user', text: 'Hello', isCommand: false }],
     });
     expect(history.sessionError).toBeNull();
   });
@@ -305,7 +305,7 @@ describe('side panel state', () => {
     expect(aborted.sending).toBe(false);
     expect(aborted.sendError).toBeNull();
     expect(aborted.messages).toEqual([
-      { role: 'user', text: 'Do something' },
+      { role: 'user', text: 'Do something', isCommand: false },
       { role: 'system', text: '⚠ Aborted' },
     ]);
   });
@@ -386,7 +386,7 @@ describe('side panel state', () => {
       result: 'content',
     });
     // Should not add or modify anything
-    expect(state.messages).toEqual([{ role: 'user', text: 'Hello' }]);
+    expect(state.messages).toEqual([{ role: 'user', text: 'Hello', isCommand: false }]);
   });
 
   it('handles multiple tool_call/tool_result sequences', () => {
@@ -456,7 +456,7 @@ describe('side panel state', () => {
     state = reduceSidePanelState(state, { type: 'assistant_message', text: 'The file contains: hello world' });
 
     expect(state.messages).toEqual([
-      { role: 'user', text: 'Read foo.txt' },
+      { role: 'user', text: 'Read foo.txt', isCommand: false },
       { role: 'tool', toolName: 'read_file', toolResult: 'hello world', isError: false },
       { role: 'assistant', text: 'The file contains: hello world', thinking: undefined },
     ]);
@@ -472,7 +472,7 @@ describe('side panel state', () => {
     state = reduceSidePanelState(state, { type: 'assistant_message', text: 'Done!', thinking: 'Analysis complete' });
 
     expect(state.messages).toHaveLength(4);
-    expect(state.messages[0]).toEqual({ role: 'user', text: 'Analyze this' });
+    expect(state.messages[0]).toEqual({ role: 'user', text: 'Analyze this', isCommand: false });
     expect(state.messages[1]).toEqual({ role: 'assistant', text: '', thinking: 'Let me analyze...' });
     expect(state.messages[2]).toEqual({ role: 'tool', toolName: 'bash', toolResult: 'output', isError: false });
     expect(state.messages[3]).toEqual({ role: 'assistant', text: 'Done!', thinking: 'Analysis complete' });

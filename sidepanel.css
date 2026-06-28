@@ -540,6 +540,38 @@ main::-webkit-scrollbar-thumb:hover {
   font-size: 0.88em;
 }
 
+/* Command messages — terminal-like pill, left-aligned */
+.message.user.command {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  color: var(--ink);
+  align-self: flex-start;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  max-width: 95%;
+}
+
+.command-icon {
+  font-size: 11px;
+  color: var(--accent);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.command-text {
+  font-family: "SF Mono", "Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, monospace;
+  font-size: 12px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Assistant messages — white card, left-aligned */
 .message.assistant {
   background: var(--assistant-bubble);

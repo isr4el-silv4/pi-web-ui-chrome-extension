@@ -42,7 +42,7 @@ export function reduceSidePanelState(state, event) {
         storageAccessEnabled: event.session?.storageAccessEnabled ?? state.storageAccessEnabled,
       };
     case 'user_message':
-      return { ...state, messages: [...state.messages, { role: 'user', text: event.text }], sending: true, sendError: null };
+      return { ...state, messages: [...state.messages, { role: 'user', text: event.text, isCommand: event.text.startsWith('/') }], sending: true, sendError: null };
     case 'assistant_message':
       return { ...state, messages: [...state.messages, { role: 'assistant', text: event.text, thinking: event.thinking }], sending: false, sendError: null };
     case 'tool_call':
