@@ -6,6 +6,7 @@ import { renderMarkdown } from './markdown-renderer.js';
 
 let state = createInitialState();
 let client;
+let promptWasFocused = false;
 
 const els = {
   status: document.querySelector('#status'),
@@ -362,7 +363,17 @@ function render() {
   const isBusy = state.sending;
   els.sendButton.hidden = isBusy;
   els.abortButton.hidden = !isBusy;
-  els.prompt.disabled = !state.bridgeOnline || isBusy;
+  
+  // Track if prompt was focused before disabling, so we can restore focus when re-enabled
+  const willBeDisabled = !state.bridgeOnline || isBusy;
+  if (!els.prompt.disabled && willBeDisabled) {
+    promptWasFocused = document.activeElement === els.prompt;
+  }
+  els.prompt.disabled = willBeDisabled;
+  if (!willBeDisabled && promptWasFocused) {
+    promptWasFocused = false;
+    els.prompt.focus();
+  }
   
   // Show send error if present
   let errorEl = document.querySelector('#send-error');
