@@ -90,7 +90,9 @@ function getRemainingSeconds(createdAt) {
 
 function buildAutocompleteItems(prefix) {
   const items = [];
-  const lower = prefix.toLowerCase();
+  // Strip leading / so we match against bare command names
+  const raw = prefix.startsWith('/') ? prefix.substring(1) : prefix;
+  const lower = raw.toLowerCase();
 
   // Commands
   for (const cmd of state.commands) {
@@ -187,6 +189,12 @@ function renderAutocompleteDropdown() {
     });
 
     els.autocompleteDropdown.appendChild(el);
+  }
+
+  // Scroll the selected item into view
+  const selected = els.autocompleteDropdown.querySelector('.autocomplete-item.selected');
+  if (selected) {
+    selected.scrollIntoView({ block: 'nearest' });
   }
 }
 

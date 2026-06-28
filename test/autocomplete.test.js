@@ -1,6 +1,51 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState, reduceSidePanelState } from '../sidepanel-state.js';
 
+// Replicate buildAutocompleteItems matching logic for unit testing
+// (the real function lives in sidepanel.js and closes over DOM state)
+function buildAutocompleteItems(commands, skills, templates, prefix) {
+  const items = [];
+  // Strip leading / so we match against bare command names
+  const raw = prefix.startsWith('/') ? prefix.substring(1) : prefix;
+  const lower = raw.toLowerCase();
+
+  for (const cmd of commands) {
+    if (cmd.name.toLowerCase().startsWith(lower)) {
+      items.push({
+        value: `/${cmd.name} `,
+        label: `/${cmd.name}`,
+        description: cmd.description || '',
+        type: 'command',
+      });
+    }
+  }
+
+  for (const skill of skills) {
+    const label = `/skill:${skill.name}`;
+    if (label.toLowerCase().startsWith('/' + lower)) {
+      items.push({
+        value: `${label} `,
+        label,
+        description: skill.description || '',
+        type: 'skill',
+      });
+    }
+  }
+
+  for (const tmpl of templates) {
+    if (tmpl.name.toLowerCase().startsWith(lower)) {
+      items.push({
+        value: `/${tmpl.name} `,
+        label: `/${tmpl.name}`,
+        description: tmpl.description || '',
+        type: 'template',
+      });
+    }
+  }
+
+  return items;
+}
+
 describe('extension commands and autocomplete state', () => {
   it('starts with empty commands, skills, templates and closed autocomplete', () => {
     const state = createInitialState();
@@ -191,5 +236,68 @@ describe('extension commands and autocomplete state', () => {
       'Previous notification',
       '⚠ Unknown command: /bad-cmd',
     ]);
+  });
+});
+
+describe('buildAutocompleteItems matching logic', () => {
+  const commands = [
+    { name: 'persona', description: 'Load a persona', source: 'extension', hasCompletions: true },
+    { name: 'compact', description: 'Compact context', source: 'builtin', hasCompletions: false },
+    { name: 'model', description: 'Switch model', source: 'builtin', hasCompletions: true },
+  ];
+  const skills = [
+    { name: 'git-workflow', description: 'Git best practices' },
+  ];
+  const templates = [
+    { name: 'review', description: 'Review code', args: ['file', 'focus'] },
+  ];
+
+  it('matches all commands when prefix is just "/"', () => {
+    const items = buildAutocompleteItems(commands, skills, templates, '/');
+    // Should match all commands, skills, and templates
+    expect(items).toHaveLength(5); // 3 commands + 1 skill + 1 template
+    expect(items.map(i => i.label)).toContain('/persona');
+    expect(items.map(i => i.label)).toContain('/compact');
+    expect(items.map(i => i.label)).toContain('/model');
+    expect(items.map(i => i.label)).toContain('/skill:git-workflow');
+    expect(items.map(i => i.label)).toContain('/review');
+  });
+
+  it('matches commands by partial prefix with leading /', () => {
+    const items = buildAutocompleteItems(commands, skills, templates, '/per');
+    expect(items).toHaveLength(1);
+    expect(items[0].label).toBe('/persona');
+    expect(items[0].type).toBe('command');
+  });
+
+  it('matches commands by partial prefix without leading /', () => {
+    const items = buildAutocompleteItems(commands, skills, templates, 'per');
+    expect(items).toHaveLength(1);
+    expect(items[0].label).toBe('/persona');
+  });
+
+  it('matches skills with /skill: prefix', () => {
+    const items = buildAutocompleteItems(commands, skills, templates, '/skill:git');
+    expect(items).toHaveLength(1);
+    expect(items[0].label).toBe('/skill:git-workflow');
+    expect(items[0].type).toBe('skill');
+  });
+
+  it('returns empty array when no match', () => {
+    const items = buildAutocompleteItems(commands, skills, templates, '/nonexistent');
+    expect(items).toHaveLength(0);
+  });
+
+  it('is case-insensitive', () => {
+    const items = buildAutocompleteItems(commands, skills, templates, '/PERSONA');
+    expect(items).toHaveLength(1);
+    expect(items[0].label).toBe('/persona');
+  });
+
+  it('matches templates by name', () => {
+    const items = buildAutocompleteItems(commands, skills, templates, '/rev');
+    expect(items).toHaveLength(1);
+    expect(items[0].label).toBe('/review');
+    expect(items[0].type).toBe('template');
   });
 });
