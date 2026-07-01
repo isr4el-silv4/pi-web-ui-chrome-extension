@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Pi Coding Agent Web UI",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Chrome side-panel UI for Pi backed by a local bridge.",
   "icons": {
     "16": "pi-icon-16.png",

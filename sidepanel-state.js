@@ -23,6 +23,10 @@ export function createInitialState() {
     autocompleteItems: [],
     autocompleteIndex: -1,
     pendingCompletionCommand: null,
+    // Model selector
+    modelList: [],
+    currentModelProvider: undefined,
+    currentModelId: undefined,
   };
 }
 
@@ -182,6 +186,19 @@ export function reduceSidePanelState(state, event) {
       return { ...state, autocompleteOpen: false, autocompleteItems: [], autocompleteIndex: -1 };
     case 'extension_command_error':
       return { ...state, notifications: [...state.notifications, `⚠ Unknown command: /${event.command}`], sending: false };
+    case 'model_changed':
+      return { ...state, notifications: [...state.notifications, `🤖 Model: ${event.provider}/${event.modelName || event.modelId}`], sending: false };
+    case 'thinking_changed':
+      return { ...state, notifications: [...state.notifications, `💭 Thinking: ${event.level}`], sending: false };
+    case 'compaction_done':
+      return { ...state, notifications: [...state.notifications, '📦 Context compacted'], sending: false };
+    case 'model_list':
+      return {
+        ...state,
+        modelList: event.models || [],
+        currentModelProvider: event.currentProvider,
+        currentModelId: event.currentModelId,
+      };
     default:
       return state;
   }

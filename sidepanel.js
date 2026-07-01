@@ -34,6 +34,8 @@ const els = {
   headerCwdRow: document.querySelector('#header-cwd-row'),
   themeToggle: document.querySelector('#theme-toggle'),
   autocompleteDropdown: document.querySelector('#autocomplete-dropdown'),
+  modelSelectorBar: document.querySelector('#model-selector-bar'),
+  modelSelect: document.querySelector('#model-select'),
 };
 
 let selectedCwd = null;
@@ -657,6 +659,9 @@ function render() {
   // Render autocomplete dropdown
   renderAutocompleteDropdown();
 
+  // Render model selector
+  renderModelSelector();
+
   // Update cwd display from session state (synced from bridge) or local input
   const sessionCwd = state.session?.cwd;
   if (sessionCwd) {
@@ -731,6 +736,26 @@ function renderSessionSelect() {
   const currentSessionPath = state.session?.sessionPath;
   if (currentSessionPath && sessions.some((s) => s.path === currentSessionPath)) {
     select.value = currentSessionPath;
+  }
+}
+
+function renderModelSelector() {
+  if (state.modelList.length === 0) {
+    els.modelSelectorBar.hidden = true;
+    return;
+  }
+
+  els.modelSelectorBar.hidden = false;
+  els.modelSelect.innerHTML = '';
+
+  for (const model of state.modelList) {
+    const opt = document.createElement('option');
+    opt.value = `${model.provider}/${model.name}`;
+    opt.textContent = `${model.provider}/${model.name}`;
+    if (model.provider === state.currentModelProvider && model.id === state.currentModelId) {
+      opt.selected = true;
+    }
+    els.modelSelect.appendChild(opt);
   }
 }
 
@@ -999,6 +1024,15 @@ els.themeToggle.addEventListener('click', () => {
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
   if (!localStorage.getItem('pi-web-ui-theme')) {
     applyTheme(e.matches ? 'dark' : 'light');
+  }
+});
+
+// Model selector
+els.modelSelect.addEventListener('change', () => {
+  const value = els.modelSelect.value;
+  if (value) {
+    const [provider, modelId] = value.split('/');
+    client.sendCommand({ type: 'set_model', provider, modelId });
   }
 });
 
