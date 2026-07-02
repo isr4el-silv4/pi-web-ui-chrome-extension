@@ -187,7 +187,12 @@ export function reduceSidePanelState(state, event) {
     case 'extension_command_error':
       return { ...state, notifications: [...state.notifications, `⚠ Unknown command: /${event.command}`], sending: false };
     case 'model_changed':
-      return { ...state, notifications: [...state.notifications, `🤖 Model: ${event.provider}/${event.modelName || event.modelId}`], sending: false };
+      return {
+        ...state,
+        currentModelProvider: event.provider,
+        currentModelId: event.modelId,
+        sending: false,
+      };
     case 'thinking_changed':
       return { ...state, notifications: [...state.notifications, `💭 Thinking: ${event.level}`], sending: false };
     case 'compaction_done':

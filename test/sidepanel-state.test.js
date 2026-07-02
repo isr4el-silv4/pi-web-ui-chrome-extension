@@ -26,6 +26,9 @@ describe('side panel state', () => {
       autocompleteItems: [],
       autocompleteIndex: -1,
       pendingCompletionCommand: null,
+      modelList: [],
+      currentModelProvider: undefined,
+      currentModelId: undefined,
     });
   });
 
@@ -476,5 +479,122 @@ describe('side panel state', () => {
     expect(state.messages[1]).toEqual({ role: 'assistant', text: '', thinking: 'Let me analyze...' });
     expect(state.messages[2]).toEqual({ role: 'tool', toolName: 'bash', toolResult: 'output', isError: false });
     expect(state.messages[3]).toEqual({ role: 'assistant', text: 'Done!', thinking: 'Analysis complete' });
+  });
+
+  // === Model selector events ===
+
+  it('populates modelList and current model on model_list event', () => {
+    const state = reduceSidePanelState(createInitialState(), {
+      type: 'model_list',
+      models: [
+        { provider: 'openai', id: 'gpt-4', name: 'GPT-4' },
+        { provider: 'anthropic', id: 'claude-3', name: 'Claude 3' },
+      ],
+      currentProvider: 'openai',
+      currentModelId: 'gpt-4',
+    });
+    expect(state.modelList).toHaveLength(2);
+    expect(state.currentModelProvider).toBe('openai');
+    expect(state.currentModelId).toBe('gpt-4');
+  });
+
+  it('model_changed updates currentModelProvider and currentModelId', () => {
+    let state = reduceSidePanelState(createInitialState(), {
+      type: 'model_list',
+      models: [
+        { provider: 'openai', id: 'gpt-4', name: 'GPT-4' },
+        { provider: 'anthropic', id: 'claude-3', name: 'Claude 3' },
+      ],
+      currentProvider: 'openai',
+      currentModelId: 'gpt-4',
+    });
+    expect(state.currentModelProvider).toBe('openai');
+    expect(state.currentModelId).toBe('gpt-4');
+
+    state = reduceSidePanelState(state, {
+      type: 'model_changed',
+      provider: 'anthropic',
+      modelId: 'claude-3',
+      modelName: 'Claude 3',
+    });
+    expect(state.currentModelProvider).toBe('anthropic');
+    expect(state.currentModelId).toBe('claude-3');
+  });
+
+  it('model_changed does NOT add a notification (no redundant model banners)', () => {
+    let state = reduceSidePanelState(createInitialState(), {
+      type: 'model_list',
+      models: [
+        { provider: 'openai', id: 'gpt-4', name: 'GPT-4' },
+        { provider: 'anthropic', id: 'claude-3', name: 'Claude 3' },
+      ],
+      currentProvider: 'openai',
+      currentModelId: 'gpt-4',
+    });
+    expect(state.notifications).toEqual([]);
+
+    // Switch model multiple times
+    state = reduceSidePanelState(state, {
+      type: 'model_changed',
+      provider: 'anthropic',
+      modelId: 'claude-3',
+      modelName: 'Claude 3',
+    });
+    state = reduceSidePanelState(state, {
+      type: 'model_changed',
+      provider: 'openai',
+      modelId: 'gpt-4',
+      modelName: 'GPT-4',
+    });
+
+    // No notifications should have been added
+    expect(state.notifications).toEqual([]);
+  });
+
+  it('model_changed sets sending=false', () => {
+    let state = reduceSidePanelState(createInitialState(), { type: 'user_message', text: 'Hi' });
+    expect(state.sending).toBe(true);
+
+    state = reduceSidePanelState(state, {
+      type: 'model_changed',
+      provider: 'anthropic',
+      modelId: 'claude-3',
+      modelName: 'Claude 3',
+    });
+    expect(state.sending).toBe(false);
+  });
+
+  it('multiple model swaps correctly track the latest model', () => {
+    let state = reduceSidePanelState(createInitialState(), {
+      type: 'model_list',
+      models: [
+        { provider: 'openai', id: 'gpt-4', name: 'GPT-4' },
+        { provider: 'anthropic', id: 'claude-3', name: 'Claude 3' },
+        { provider: 'google', id: 'gemini-pro', name: 'Gemini Pro' },
+      ],
+      currentProvider: 'openai',
+      currentModelId: 'gpt-4',
+    });
+
+    // Swap 1
+    state = reduceSidePanelState(state, {
+      type: 'model_changed', provider: 'anthropic', modelId: 'claude-3', modelName: 'Claude 3',
+    });
+    expect(state.currentModelProvider).toBe('anthropic');
+    expect(state.currentModelId).toBe('claude-3');
+
+    // Swap 2
+    state = reduceSidePanelState(state, {
+      type: 'model_changed', provider: 'google', modelId: 'gemini-pro', modelName: 'Gemini Pro',
+    });
+    expect(state.currentModelProvider).toBe('google');
+    expect(state.currentModelId).toBe('gemini-pro');
+
+    // Swap 3 - back to original
+    state = reduceSidePanelState(state, {
+      type: 'model_changed', provider: 'openai', modelId: 'gpt-4', modelName: 'GPT-4',
+    });
+    expect(state.currentModelProvider).toBe('openai');
+    expect(state.currentModelId).toBe('gpt-4');
   });
 });
