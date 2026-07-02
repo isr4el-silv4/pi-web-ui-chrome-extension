@@ -243,7 +243,6 @@ describe('buildAutocompleteItems matching logic', () => {
   const commands = [
     { name: 'persona', description: 'Load a persona', source: 'extension', hasCompletions: true },
     { name: 'compact', description: 'Compact context', source: 'builtin', hasCompletions: false },
-    { name: 'model', description: 'Switch model', source: 'builtin', hasCompletions: true },
   ];
   const skills = [
     { name: 'git-workflow', description: 'Git best practices' },
@@ -255,10 +254,9 @@ describe('buildAutocompleteItems matching logic', () => {
   it('matches all commands when prefix is just "/"', () => {
     const items = buildAutocompleteItems(commands, skills, templates, '/');
     // Should match all commands, skills, and templates
-    expect(items).toHaveLength(5); // 3 commands + 1 skill + 1 template
+    expect(items).toHaveLength(4); // 2 commands + 1 skill + 1 template
     expect(items.map(i => i.label)).toContain('/persona');
     expect(items.map(i => i.label)).toContain('/compact');
-    expect(items.map(i => i.label)).toContain('/model');
     expect(items.map(i => i.label)).toContain('/skill:git-workflow');
     expect(items.map(i => i.label)).toContain('/review');
   });
@@ -368,7 +366,7 @@ describe('argument completion fallback', () => {
     });
     state = reduceSidePanelState(state, {
       type: 'autocomplete_open',
-      items: [{ value: '/model ', label: '/model' }],
+      items: [{ value: '/compact ', label: '/compact' }],
     });
     expect(state.pendingCompletionCommand).toBeNull();
   });
