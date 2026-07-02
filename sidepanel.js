@@ -15,7 +15,7 @@ const els = {
   session: document.querySelector('#session'),
   messages: document.querySelector('#messages'),
   main: document.querySelector('main'),
-  uiRequests: document.querySelector('#header-ui-requests'),
+  uiRequests: document.querySelector('#ui-requests'),
   notifications: document.querySelector('#notifications'),
   form: document.querySelector('#prompt-form'),
   prompt: document.querySelector('#prompt'),
@@ -41,53 +41,6 @@ const els = {
 let selectedCwd = null;
 let lastFetchedCwd = null;
 let autocompleteDebounceTimer = null;
-
-// ── UI Request Timeout Timers ──────────────────────────────
-const UI_REQUEST_TIMEOUT_MS = 30_000; // 30 seconds
-const uiRequestTimers = new Map(); // id -> { timeout, interval }
-
-function startUiRequestTimer(requestId, createdAt) {
-  // Clear any existing timer for this request
-  clearUiRequestTimer(requestId);
-
-  const elapsed = Date.now() - createdAt;
-  const remaining = Math.max(0, UI_REQUEST_TIMEOUT_MS - elapsed);
-
-  const timeout = setTimeout(() => {
-    clearUiRequestTimer(requestId);
-    // Send default response based on kind
-    const request = state.uiRequests.find((r) => r.id === requestId);
-    if (request) {
-      const defaultValue = request.kind === 'confirm' ? false : '';
-      try {
-        client.sendCommand({ type: 'extension_ui_response', id: requestId, value: defaultValue });
-      } catch {
-        // Bridge not connected
-      }
-      dispatch({ type: 'extension_ui_request_timeout', id: requestId });
-    }
-  }, remaining);
-
-  const interval = setInterval(() => {
-    render(); // Re-render to update countdown display
-  }, 1000);
-
-  uiRequestTimers.set(requestId, { timeout, interval });
-}
-
-function clearUiRequestTimer(requestId) {
-  const timer = uiRequestTimers.get(requestId);
-  if (timer) {
-    clearTimeout(timer.timeout);
-    clearInterval(timer.interval);
-    uiRequestTimers.delete(requestId);
-  }
-}
-
-function getRemainingSeconds(createdAt) {
-  const elapsed = Date.now() - createdAt;
-  return Math.max(0, Math.ceil((UI_REQUEST_TIMEOUT_MS - elapsed) / 1000));
-}
 
 // ── Autocomplete Engine ───────────────────────────────────
 
@@ -392,56 +345,42 @@ function render() {
     errorEl.hidden = true;
   }
   
+  // ── UI Requests (no timeout for wizards) ────────────────
   els.uiRequests.innerHTML = '';
-
-  // Clean up timers for requests no longer in state
-  for (const [id] of uiRequestTimers) {
-    if (!state.uiRequests.some((r) => r.id === id)) {
-      clearUiRequestTimer(id);
-    }
-  }
 
   for (const request of state.uiRequests) {
     const item = document.createElement('div');
-    item.className = 'header-ui-request';
+    item.className = 'ui-request';
     item.id = `ui-request-${request.id}`;
+
+    const header = document.createElement('div');
+    header.className = 'ui-request-header';
 
     const msg = document.createElement('span');
     msg.className = 'ui-request-message';
     msg.textContent = request.message ?? request.kind;
-    item.appendChild(msg);
+    header.appendChild(msg);
 
-    // Countdown timer display
-    const countdown = document.createElement('span');
-    countdown.className = 'ui-request-countdown';
-    countdown.textContent = `⏱ ${getRemainingSeconds(request.createdAt)}s`;
-    countdown.style.fontSize = '11px';
-    countdown.style.color = 'var(--ink-tertiary)';
-    countdown.style.flexShrink = '0';
-    item.appendChild(countdown);
+    // Dismiss button (X) — cancels the wizard
+    const dismiss = document.createElement('button');
+    dismiss.className = 'ui-request-dismiss';
+    dismiss.textContent = '×';
+    dismiss.title = 'Cancel';
+    dismiss.addEventListener('click', () => {
+      client.sendCommand({ type: 'extension_ui_response', id: request.id, value: null });
+      dispatch({ type: 'extension_ui_response_sent', id: request.id });
+    });
+    header.appendChild(dismiss);
 
-    // Start timer if not already running
-    if (!uiRequestTimers.has(request.id)) {
-      startUiRequestTimer(request.id, request.createdAt);
-    }
+    item.appendChild(header);
 
     const actions = document.createElement('div');
     actions.className = 'ui-request-actions';
-    actions.style.display = 'flex';
-    actions.style.gap = '6px';
-    actions.style.alignItems = 'center';
 
     if (request.kind === 'confirm') {
       const okBtn = document.createElement('button');
+      okBtn.className = 'ui-request-btn ui-request-btn-ok';
       okBtn.textContent = 'OK';
-      okBtn.style.background = 'var(--success)';
-      okBtn.style.color = '#fff';
-      okBtn.style.border = 'none';
-      okBtn.style.borderRadius = 'var(--radius-sm)';
-      okBtn.style.padding = '4px 14px';
-      okBtn.style.fontSize = '12px';
-      okBtn.style.fontWeight = '600';
-      okBtn.style.cursor = 'pointer';
       okBtn.addEventListener('click', () => {
         client.sendCommand({ type: 'extension_ui_response', id: request.id, value: true });
         dispatch({ type: 'extension_ui_response_sent', id: request.id });
@@ -449,15 +388,8 @@ function render() {
       actions.appendChild(okBtn);
 
       const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'ui-request-btn';
       cancelBtn.textContent = 'Cancel';
-      cancelBtn.style.background = 'var(--surface-2)';
-      cancelBtn.style.color = 'var(--ink)';
-      cancelBtn.style.border = '1px solid var(--border)';
-      cancelBtn.style.borderRadius = 'var(--radius-sm)';
-      cancelBtn.style.padding = '4px 14px';
-      cancelBtn.style.fontSize = '12px';
-      cancelBtn.style.fontWeight = '600';
-      cancelBtn.style.cursor = 'pointer';
       cancelBtn.addEventListener('click', () => {
         client.sendCommand({ type: 'extension_ui_response', id: request.id, value: false });
         dispatch({ type: 'extension_ui_response_sent', id: request.id });
@@ -465,12 +397,7 @@ function render() {
       actions.appendChild(cancelBtn);
     } else if (request.kind === 'select' && request.options) {
       const select = document.createElement('select');
-      select.style.fontSize = '12px';
-      select.style.padding = '3px 8px';
-      select.style.border = '1px solid var(--border)';
-      select.style.borderRadius = 'var(--radius-sm)';
-      select.style.background = 'var(--surface)';
-      select.style.color = 'var(--ink)';
+      select.className = 'ui-request-select';
       for (const opt of request.options) {
         const option = document.createElement('option');
         option.value = opt;
@@ -480,15 +407,8 @@ function render() {
       actions.appendChild(select);
 
       const submitBtn = document.createElement('button');
+      submitBtn.className = 'ui-request-btn ui-request-btn-submit';
       submitBtn.textContent = 'Submit';
-      submitBtn.style.background = 'var(--accent)';
-      submitBtn.style.color = '#fff';
-      submitBtn.style.border = 'none';
-      submitBtn.style.borderRadius = 'var(--radius-sm)';
-      submitBtn.style.padding = '4px 14px';
-      submitBtn.style.fontSize = '12px';
-      submitBtn.style.fontWeight = '600';
-      submitBtn.style.cursor = 'pointer';
       submitBtn.addEventListener('click', () => {
         client.sendCommand({ type: 'extension_ui_response', id: request.id, value: select.value });
         dispatch({ type: 'extension_ui_response_sent', id: request.id });
@@ -497,14 +417,8 @@ function render() {
     } else if (request.kind === 'input') {
       const input = document.createElement('input');
       input.type = 'text';
+      input.className = 'ui-request-input';
       input.placeholder = request.message || 'Enter value...';
-      input.style.fontSize = '12px';
-      input.style.padding = '3px 8px';
-      input.style.border = '1px solid var(--border)';
-      input.style.borderRadius = 'var(--radius-sm)';
-      input.style.background = 'var(--surface)';
-      input.style.color = 'var(--ink)';
-      input.style.minWidth = '120px';
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           client.sendCommand({ type: 'extension_ui_response', id: request.id, value: input.value });
@@ -514,15 +428,8 @@ function render() {
       actions.appendChild(input);
 
       const submitBtn = document.createElement('button');
+      submitBtn.className = 'ui-request-btn ui-request-btn-submit';
       submitBtn.textContent = 'Submit';
-      submitBtn.style.background = 'var(--accent)';
-      submitBtn.style.color = '#fff';
-      submitBtn.style.border = 'none';
-      submitBtn.style.borderRadius = 'var(--radius-sm)';
-      submitBtn.style.padding = '4px 14px';
-      submitBtn.style.fontSize = '12px';
-      submitBtn.style.fontWeight = '600';
-      submitBtn.style.cursor = 'pointer';
       submitBtn.addEventListener('click', () => {
         client.sendCommand({ type: 'extension_ui_response', id: request.id, value: input.value });
         dispatch({ type: 'extension_ui_response_sent', id: request.id });
@@ -531,6 +438,7 @@ function render() {
     } else {
       // Default: simple OK button
       const ok = document.createElement('button');
+      ok.className = 'ui-request-btn ui-request-btn-ok';
       ok.textContent = 'OK';
       ok.addEventListener('click', () => {
         client.sendCommand({ type: 'extension_ui_response', id: request.id, value: request.kind === 'confirm' ? true : '' });
