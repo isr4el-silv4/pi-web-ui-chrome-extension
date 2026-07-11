@@ -6,7 +6,7 @@
 
 Chrome side-panel extension that gives [Pi Coding Agent](https://pi.dev) direct browser control. Works together with the **[pi-web-ui Pi extension](https://www.npmjs.com/package/@isr4el-silv4/pi-web-ui)** (the local bridge) to connect Pi to your running Chrome browser.
 
-## Architecture
+## 🏗 Architecture
 
 ```
 ┌───────────────────────────┐         WebSocket          ┌──────────────────────┐
@@ -29,17 +29,18 @@ Chrome side-panel extension that gives [Pi Coding Agent](https://pi.dev) direct 
 4. Pi sends `browser_tool_request` messages through the bridge
 5. The extension executes browser operations and returns results
 
-## Prerequisites
+## 📋 Prerequisites
 
 - **Pi Coding Agent** ([pi.dev](https://pi.dev)) installed
 - **pi-web-ui** Pi extension installed (follow [this](https://pi.dev/packages/@isr4el-silv4/pi-web-ui))
 - **This Chrome extension** loaded in Chrome (dev mode or from the Web Store)
 
-## Setup
+## ⚡ Setup
 
 ### 1. Install the Chrome Extension
 
-**From the Chrome Web Store:** Coming soon.
+#### Recommended
+**From the Chrome Web Store:** [here](https://chromewebstore.google.com/detail/pi-coding-agent-web-ui/clhbmkkjcoknpbkicpfalmapgogeikhi?hl=en-US&utm_source=ext_sidebar).
 
 **Manual (development):**
 1. Open `chrome://extensions/`
@@ -60,7 +61,7 @@ This starts the local bridge process. The side panel will show **Bridge online**
 
 Click **Browse…** in the side panel header to select your project directory. This sets the `cwd` for the Pi session and determines where sessions are saved.
 
-## What It Unlocks
+## 🔓 What It Unlocks
 
 ### Browser Tools
 
@@ -101,7 +102,7 @@ Typical flow: you're working on a frontend issue, ask Pi to inspect the page, an
 - **Script evaluation** and **raw CDP commands** require explicit confirmation before execution
 - All sensitive browser actions are recorded in an audit log on the bridge side
 
-## Message Types
+## 💬 Message Types
 
 The WebSocket protocol uses these message types:
 
@@ -120,10 +121,10 @@ The WebSocket protocol uses these message types:
 - `browser_tool_request` — bridge asking the extension to execute a browser tool
 - `extension_ui_request` — confirm/input prompts from Pi
 
-## Development
+## 🛠 Development
 
 Tests live in the `test/` directory. Run them with your preferred test runner.
 
-## License
+## 📄 License
 
 Apache 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
