@@ -1,5 +1,5 @@
 import { createBridgeClient } from './bridge-client.js';
-import { createInitialState, reduceSidePanelState } from './sidepanel-state.js';
+import { createInitialState, reduceSidePanelState, resolveModelFromValue } from './sidepanel-state.js';
 import { createToolExecutor } from './tool-executor.js';
 import { resolveCwdPath } from './cwd-picker.js';
 import { renderMarkdown } from './markdown-renderer.js';
@@ -656,15 +656,20 @@ function renderModelSelector() {
   els.modelSelectorBar.hidden = false;
   els.modelSelect.innerHTML = '';
 
-  for (const model of state.modelList) {
+  // Option values are the model's index in modelList. We must NOT encode
+  // `provider/name` or `provider/id` here: both provider names and model ids can
+  // contain slashes (e.g. `vercel-ai-gateway` / `zai/glm-5.1`, or a local
+  // `Qwen/Qwen3.6-27B`), which would break the value parsing on change.
+  state.modelList.forEach((model, index) => {
     const opt = document.createElement('option');
-    opt.value = `${model.provider}/${model.name}`;
-    opt.textContent = `${model.provider}/${model.name}`;
+    opt.value = String(index);
+    opt.textContent = `${model.provider}/${model.name || model.id}`;
+    // Selection is matched on the canonical provider + id (never the display name).
     if (model.provider === state.currentModelProvider && model.id === state.currentModelId) {
       opt.selected = true;
     }
     els.modelSelect.appendChild(opt);
-  }
+  });
 }
 
 function renderErrorPill() {
@@ -937,10 +942,9 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
 
 // Model selector
 els.modelSelect.addEventListener('change', () => {
-  const value = els.modelSelect.value;
-  if (value) {
-    const [provider, modelId] = value.split('/');
-    client.sendCommand({ type: 'set_model', provider, modelId });
+  const selection = resolveModelFromValue(els.modelSelect.value, state.modelList);
+  if (selection) {
+    client.sendCommand({ type: 'set_model', provider: selection.provider, modelId: selection.modelId });
   }
 });
 

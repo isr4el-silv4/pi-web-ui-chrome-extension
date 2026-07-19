@@ -208,3 +208,30 @@ export function reduceSidePanelState(state, event) {
       return state;
   }
 }
+
+/**
+ * Resolve the command payload to switch to the model selected in the dropdown.
+ *
+ * Option values are the numeric index of the model within `modelList`. This is
+ * deliberately NOT `provider/name` or `provider/id`, because both provider names
+ * and model ids can contain slashes (e.g. provider `vercel-ai-gateway` with id
+ * `zai/glm-5.1`, or a local model id `Qwen/Qwen3.6-27B`). Parsing such values
+ * with `split('/')` corrupts the model id. Indexing avoids that entirely and
+ * also sends the canonical `id` (not the display `name`) to the bridge, which is
+ * what the server matches on.
+ *
+ * Returns `null` for an out-of-range / non-numeric selection.
+ */
+export function resolveModelFromValue(value, modelList) {
+  if (value == null) return null;
+  // Option values are always `String(index)` (non-negative integers). Validate
+  // strictly: Number('') === 0 and Number(null) === 0, so a loose numeric check
+  // would wrongly map empty/null selections onto the first model.
+  const str = String(value);
+  if (!/^\d+$/.test(str)) return null;
+  const index = Number(str);
+  if (index < 0 || index >= modelList.length) return null;
+  const model = modelList[index];
+  if (!model || !model.provider || !model.id) return null;
+  return { provider: model.provider, modelId: model.id };
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createInitialState, reduceSidePanelState } from '../sidepanel-state.js';
+import { createInitialState, reduceSidePanelState, resolveModelFromValue } from '../sidepanel-state.js';
 
 describe('side panel state', () => {
   it('starts offline with secure defaults', () => {
@@ -596,5 +596,48 @@ describe('side panel state', () => {
     });
     expect(state.currentModelProvider).toBe('openai');
     expect(state.currentModelId).toBe('gpt-4');
+  });
+});
+
+describe('resolveModelFromValue (model picker selection)', () => {
+  // Option values are indices into modelList so that model ids / names containing
+  // slashes (e.g. `Qwen/Qwen3.6-27B`, `zai/glm-5.1`) survive intact.
+  const modelList = [
+    { provider: 'openai', id: 'gpt-4', name: 'GPT-4' },
+    { provider: 'vast-ai', id: 'Qwen/Qwen3.6-27B', name: 'Qwen 3.6-27B' },
+    { provider: 'nvidia', id: 'z-ai/glm-5.1', name: 'GLM-5.1' },
+    { provider: 'zai', id: 'glm-5.2', name: 'glm-5.2' },
+  ];
+
+  it('resolves a normal selection by index and returns the canonical id (not the name)', () => {
+    expect(resolveModelFromValue('0', modelList)).toEqual({ provider: 'openai', modelId: 'gpt-4' });
+  });
+
+  it('preserves model ids that contain slashes', () => {
+    expect(resolveModelFromValue('1', modelList)).toEqual({ provider: 'vast-ai', modelId: 'Qwen/Qwen3.6-27B' });
+    expect(resolveModelFromValue('2', modelList)).toEqual({ provider: 'nvidia', modelId: 'z-ai/glm-5.1' });
+  });
+
+  it('resolves the synthesized fallback default model (the #1 regression)', () => {
+    expect(resolveModelFromValue('3', modelList)).toEqual({ provider: 'zai', modelId: 'glm-5.2' });
+  });
+
+  it('returns null for an out-of-range index', () => {
+    expect(resolveModelFromValue('4', modelList)).toBeNull();
+    expect(resolveModelFromValue('-1', modelList)).toBeNull();
+  });
+
+  it('returns null for non-numeric / empty values', () => {
+    expect(resolveModelFromValue('', modelList)).toBeNull();
+    expect(resolveModelFromValue('abc', modelList)).toBeNull();
+    expect(resolveModelFromValue(null, modelList)).toBeNull();
+  });
+
+  it('returns null when the model list is empty', () => {
+    expect(resolveModelFromValue('0', [])).toBeNull();
+  });
+
+  it('returns null for a malformed model entry at the given index', () => {
+    expect(resolveModelFromValue('0', [{ provider: 'openai' }])).toBeNull();
   });
 });
