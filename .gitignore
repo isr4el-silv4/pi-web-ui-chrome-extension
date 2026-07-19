@@ -3,4 +3,5 @@
 .env.*
 node_modules/
 Banner_1400x560.jpeg
-.pi/state/*.ref
+/.pi
+/plans
