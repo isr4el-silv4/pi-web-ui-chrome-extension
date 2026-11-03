@@ -27,6 +27,8 @@ const els = {
   cwdInput: document.querySelector('#cwd-input'),
   cookies: document.querySelector('#cookies'),
   storage: document.querySelector('#storage'),
+  autoApprove: document.querySelector('#auto-approve'),
+  autoApproveLabel: document.querySelector('#auto-approve-label'),
   devtoolsWarning: document.querySelector('#devtools-warning'),
   attachedTabsList: document.querySelector('#attached-tabs-list'),
   sessionSelect: document.querySelector('#session-select'),
@@ -312,6 +314,11 @@ function render() {
   els.headerCwdRow.hidden = !state.bridgeOnline;
   els.cookies.checked = state.cookieAccessEnabled;
   els.storage.checked = state.storageAccessEnabled;
+  els.autoApprove.checked = state.autoApproveScriptsEnabled;
+  els.autoApprove.disabled = !state.autoApproveScriptsSupported;
+  els.autoApproveLabel.title = state.autoApproveScriptsSupported
+    ? 'Run page scripts (browser_evaluate_script, Runtime.evaluate) without asking for confirmation. Other raw CDP commands still ask. Off for every new session.'
+    : 'Run page scripts without asking for confirmation: needs a bridge that supports this setting';
   els.devtoolsWarning.hidden = !state.devtoolsConflict;
   
   // Update Send/Abort button toggle
@@ -896,6 +903,7 @@ els.cwdInput.addEventListener('input', () => {
 
 els.cookies.addEventListener('change', () => client.sendCommand({ type: 'set_cookie_access', enabled: els.cookies.checked }));
 els.storage.addEventListener('change', () => client.sendCommand({ type: 'set_storage_access', enabled: els.storage.checked }));
+els.autoApprove.addEventListener('change', () => client.sendCommand({ type: 'set_auto_approve_scripts', enabled: els.autoApprove.checked }));
 
 // Session selector change handler
 els.sessionSelect.addEventListener('change', () => {

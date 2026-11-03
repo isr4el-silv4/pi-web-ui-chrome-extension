@@ -7,6 +7,8 @@ describe('side panel state', () => {
       bridgeOnline: false,
       cookieAccessEnabled: false,
       storageAccessEnabled: false,
+      autoApproveScriptsEnabled: false,
+      autoApproveScriptsSupported: false,
       messages: [],
       uiRequests: [],
       notifications: [],
@@ -41,6 +43,47 @@ describe('side panel state', () => {
     const withError = reduceSidePanelState(createInitialState(), { type: 'prompt_error', message: 'test', error: 'SDK not ready' });
     const connected = reduceSidePanelState(withError, { type: 'bridge_connected' });
     expect(connected.sendError).toBeNull();
+  });
+
+  it('updates the script auto-approval toggle from session_state', () => {
+    const on = reduceSidePanelState(createInitialState(), {
+      type: 'session_state',
+      session: { id: 's1', cwd: '/project', cookieAccessEnabled: false, storageAccessEnabled: false, autoApproveScriptsEnabled: true },
+    });
+    expect(on).toMatchObject({ autoApproveScriptsEnabled: true, autoApproveScriptsSupported: true });
+
+    const off = reduceSidePanelState(on, {
+      type: 'session_state',
+      session: { id: 's2', cwd: '/project', cookieAccessEnabled: false, storageAccessEnabled: false, autoApproveScriptsEnabled: false },
+    });
+    expect(off).toMatchObject({ autoApproveScriptsEnabled: false, autoApproveScriptsSupported: true });
+  });
+
+  it('keeps the script auto-approval toggle on replies without session fields', () => {
+    const on = reduceSidePanelState(createInitialState(), {
+      type: 'session_state',
+      session: { id: 's1', cwd: '/project', cookieAccessEnabled: false, storageAccessEnabled: false, autoApproveScriptsEnabled: true },
+    });
+    // The bridge answers extension_ui_response with session_state { session: { handled } }.
+    const afterConfirm = reduceSidePanelState(on, { type: 'session_state', session: { handled: true } });
+    expect(afterConfirm).toMatchObject({ autoApproveScriptsEnabled: true, autoApproveScriptsSupported: true });
+  });
+
+  it('resets script auto-approval when the bridge disconnects', () => {
+    const on = reduceSidePanelState(createInitialState(), {
+      type: 'session_state',
+      session: { id: 's1', cwd: '/project', cookieAccessEnabled: false, storageAccessEnabled: false, autoApproveScriptsEnabled: true },
+    });
+    const offline = reduceSidePanelState(on, { type: 'bridge_disconnected' });
+    expect(offline).toMatchObject({ bridgeOnline: false, autoApproveScriptsEnabled: false, autoApproveScriptsSupported: false });
+  });
+
+  it('marks script auto-approval unsupported when the bridge does not report it', () => {
+    const state = reduceSidePanelState(createInitialState(), {
+      type: 'session_state',
+      session: { id: 's1', cwd: '/project', cookieAccessEnabled: false, storageAccessEnabled: false },
+    });
+    expect(state).toMatchObject({ autoApproveScriptsEnabled: false, autoApproveScriptsSupported: false });
   });
 
   it('updates session and toggles from session_state messages', () => {

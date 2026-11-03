@@ -3,6 +3,9 @@ export function createInitialState() {
     bridgeOnline: false,
     cookieAccessEnabled: false,
     storageAccessEnabled: false,
+    // Run page scripts without the confirmation prompt. Supported only when the bridge reports it.
+    autoApproveScriptsEnabled: false,
+    autoApproveScriptsSupported: false,
     messages: [],
     uiRequests: [],
     notifications: [],
@@ -36,7 +39,8 @@ export function reduceSidePanelState(state, event) {
     case 'bridge_connected':
       return { ...state, bridgeOnline: true, sendError: null, notifications: [] };
     case 'bridge_disconnected':
-      return { ...state, bridgeOnline: false };
+      // The next bridge reports the setting again in its first session_state.
+      return { ...state, bridgeOnline: false, autoApproveScriptsEnabled: false, autoApproveScriptsSupported: false };
     case 'session_state':
       return {
         ...state,
@@ -44,6 +48,9 @@ export function reduceSidePanelState(state, event) {
         session: event.session,
         cookieAccessEnabled: event.session?.cookieAccessEnabled ?? state.cookieAccessEnabled,
         storageAccessEnabled: event.session?.storageAccessEnabled ?? state.storageAccessEnabled,
+        // Replies such as extension_ui_response carry no session fields: keep the last reported value.
+        autoApproveScriptsEnabled: event.session?.autoApproveScriptsEnabled ?? state.autoApproveScriptsEnabled,
+        autoApproveScriptsSupported: typeof event.session?.autoApproveScriptsEnabled === 'boolean' || state.autoApproveScriptsSupported,
       };
     case 'user_message':
       return { ...state, messages: [...state.messages, { role: 'user', text: event.text, isCommand: event.text.startsWith('/') }], sending: true, sendError: null };
