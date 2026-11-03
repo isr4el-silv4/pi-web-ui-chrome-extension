@@ -85,7 +85,7 @@ This is where it shines. Pi can now:
 - **Debug network issues** — capture and inspect network requests, including response bodies
 - **Read console output** — see what's logging in the browser
 - **Take screenshots** — verify visual state after changes
-- **Evaluate scripts** — run JavaScript in the page context (requires confirmation)
+- **Evaluate scripts** — run JavaScript in the page context (requires confirmation, unless **auto-approve** is ticked)
 - **Send raw CDP commands** — access any Chrome DevTools Protocol method
 
 Typical flow: you're working on a frontend issue, ask Pi to inspect the page, and it reads the DOM, checks the network tab, reads console errors, and suggests fixes — all without you switching contexts.
@@ -100,6 +100,7 @@ Typical flow: you're working on a frontend issue, ask Pi to inspect the page, an
 
 - **Cookie and storage access** are **opt-in** — toggled via checkboxes in the header
 - **Script evaluation** and **raw CDP commands** require explicit confirmation before execution
+- **auto-approve** (header checkbox, off by default and off again for every new or resumed session) lets Pi run page scripts without that prompt: `debugger.evaluateScript` and `debugger.sendCdpCommand` with `Runtime.evaluate`, on any tab. Every other raw CDP command still asks. The checkbox sends `set_auto_approve_scripts` to the bridge and stays disabled when the bridge does not report `autoApproveScriptsEnabled` in `session_state` (older bridge versions)
 - All sensitive browser actions are recorded in an audit log on the bridge side
 
 ## 💬 Message Types
@@ -113,6 +114,7 @@ The WebSocket protocol uses these message types:
 - `resume_session` — resume a previous session (with `sessionPath`)
 - `list_sessions` — list available sessions for a directory
 - `set_cookie_access` / `set_storage_access` — toggle sensitive permissions
+- `set_auto_approve_scripts` — run page scripts without the confirmation prompt (needs a bridge that reports `autoApproveScriptsEnabled`)
 
 **Bridge → Client:**
 - `session_state` — current session info
